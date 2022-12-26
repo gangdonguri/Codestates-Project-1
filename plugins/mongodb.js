@@ -5,6 +5,7 @@ const fp = require('fastify-plugin')
 const mongodb = require('@fastify/mongodb')
 
 module.exports = fp(async function (fastify, opts) {
+  console.log(process.env.CONNETION_STRING)
   
   fastify.register(mongodb, {
     forceClose: true,
