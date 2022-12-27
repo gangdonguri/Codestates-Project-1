@@ -118,4 +118,29 @@ module.exports = async function (fastify, opts) {
     }
   })
 
+  // 새로운 투표 생성
+  fastify.post('/', async function (request, reply) {
+
+    const result = await this.mongo.db.collection('votes').insertOne( request.body )
+
+    reply
+      .code(200)
+      .header('content-type', 'application/json')
+      .send(result)
+  })
+
+  // 새로운 선택지 생성
+  fastify.post('/options/:voteId', async function (request, reply) {
+    
+    const id = ObjectId()
+    const voteId = request.params.voteId
+    const result = await this.mongo.db.collection('options').insertOne( id, voteId, request.body )
+
+    reply
+      .code(200)
+      .header('content-type', 'application/json')
+      .send(result)
+  })
+
+
 }
