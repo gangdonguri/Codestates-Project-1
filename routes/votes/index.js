@@ -16,21 +16,9 @@ module.exports = async function (fastify, opts) {
   // 사용자는 선택지를 선택하여 투표할 수 있다.
   fastify.post('/count/:optionId', async function (request, reply) {
 
-    // TODO 1. Request Body의 userId 프린트
-    console.log('request_userID : ' + request.body.userId)
-
-    // TODO 2. Request PATH의 optionId 프린트
-    console.log('reuqest_optionId : ' + request.params.optionId)
-
-    // TODO 3.1 MongoDB count collection 연결하기
     const countCollection = this.mongo.db.collection('count')
-
-    // TDOO 3.2 MongoDB option collection 연결하기
     const optionCollection = this.mongo.db.collection('options')
-
-    // TODO 4.1 이미 투표했을 경우 400 code return
     const findOfCountCollection = await countCollection.find({ userId: request.body.userId, optionId: request.params.optionId }).toArray()
-    console.log(findOfCountCollection)
 
     if (findOfCountCollection.length !== 0) {
       reply
@@ -39,7 +27,6 @@ module.exports = async function (fastify, opts) {
         .send('이미 투표가 완료 되었습니다.')
     }
     else {
-      // TODO 4.2 해당 선택지가 없을 경우 404 code return 
       const findOfOptionsCollection = await optionCollection.find({ optionId: request.params.optionId }).toArray()
       console.log(findOfOptionsCollection)
       if (findOfOptionsCollection.length === 0) {
@@ -49,15 +36,12 @@ module.exports = async function (fastify, opts) {
           .send('해당 선택지가 없습니다.')
       }
       else {
-        // TODO 5. 위 조건문을 모두 통과했을 경우 Insert
         await countCollection.insertOne(
           {
             "userId": request.body.userId,
             "optionName": request.params.optionId
           }
         )
-
-        // TDOO 6. 삽입된 데이터 보여주기
         reply
           .code(200)
           .header('content-type', 'application/json')
@@ -114,6 +98,48 @@ module.exports = async function (fastify, opts) {
         .header('content-type', 'text/plain')
         .send('Not Found')
     }
+
+  })
+
+  // 사용자는 투표의 결과를 확인할 수 있다.
+  fastify.get('/result/:voteId', async function (request, reply) {
+
+    const optionsOfCollection = this.mongo.db.collection('options')
+    const countOfCollection = this.mongo.db.collection('count')
+    const findOfVoteId = await optionsOfCollection.find({ voteId: request.params.voteId }).toArray()
+
+
+    var listOfOptionId = []
+    var listOfNumberOfOptions = []
+    var NamesOfOptions = []
+    var Options
+
+    for (let i = 0; i < findOfVoteId.length; i++) {
+      listOfOptionId.push(findOfVoteId[i].optionId)
+      NamesOfOptions.push(findOfVoteId[i].name)
+      Options = await countOfCollection.find({ optionId: listOfOptionId[i] }).toArray()
+      listOfNumberOfOptions.push(Options.length)
+    }
+
+    if (findOfVoteId) {
+      reply
+        .code(200)
+        .header('content-type', 'application/json')
+        .send(
+          {
+            "optionId": listOfOptionId,
+            "voteId": request.params.voteId,
+            "name": NamesOfOptions,
+            "count": listOfNumberOfOptions
+          }
+        )
+    }
+    else {
+      reply
+        .code(404)
+        .header('content-type', 'text/plain')
+        .send('404 Not Found')
+    }
   })
 
   // 새로운 투표 생성
@@ -127,6 +153,7 @@ module.exports = async function (fastify, opts) {
       .send(result)
   })
 
+  // 새로운 선택지 생성
   fastify.post('/options/:voteId', async function (request, reply) {
 
     const result = await this.mongo.db.collection('options').insertOne({
