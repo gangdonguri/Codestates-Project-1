@@ -50,25 +50,23 @@ module.exports = async function (fastify, opts) {
       }
       else {
         // TODO 5. 위 조건문을 모두 통과했을 경우 Insert
-        const insertResult = await countCollection.insertOne(
+        await countCollection.insertOne(
           {
             "userId": request.body.userId,
-            "optionId": request.params.optionId
+            "optionName": request.params.optionId
           }
         )
 
         // TDOO 6. 삽입된 데이터 보여주기
-        if (insertResult) {
-          reply
-            .code(200)
-            .header('content-type', 'application/json')
-            .send(
-              {
-                "userId": request.body.userId,
-                "optionId": request.params.optionId
-              }
-            )
-        }
+        reply
+          .code(200)
+          .header('content-type', 'application/json')
+          .send(
+            {
+              "userId": request.body.userId,
+              "optionName": findOfOptionsCollection[0].name
+            }
+          )
       }
     }
 
@@ -121,7 +119,7 @@ module.exports = async function (fastify, opts) {
   // 새로운 투표 생성
   fastify.post('/', async function (request, reply) {
 
-    const result = await this.mongo.db.collection('votes').insertOne( request.body )
+    const result = await this.mongo.db.collection('votes').insertOne(request.body)
 
     reply
       .code(200)
@@ -132,8 +130,8 @@ module.exports = async function (fastify, opts) {
   fastify.post('/options/:voteId', async function (request, reply) {
 
     const result = await this.mongo.db.collection('options').insertOne({
-      "name":request.body.name,
-      "voteId":request.params.voteId
+      "name": request.body.name,
+      "voteId": request.params.voteId
     })
 
     reply
@@ -142,4 +140,46 @@ module.exports = async function (fastify, opts) {
       .send(result)
   })
 
+  // 사용자는 자신이 생성한 투표를 삭제할 수 있다.
+  fastify.delete('/:voteId', async function (request, reply) {
+
+    const requestUserId = request.body.userId
+    const todosCollection = this.mongo.db.collection('votes')
+    const findOfVotes = await todosCollection.find({ voteId: Number(request.params.voteId) }).toArray()
+    console.log(findOfVotes)
+
+    if (findOfVotes.length === 0) {
+      reply
+        .code(404)
+        .header('content-type', 'text/plain')
+        .send('해당 사용자가 작성한 투표가 없습니다.')
+    }
+    else {
+      if (requestUserId === findOfVotes[0].userId) {
+        const result = await todosCollection.deleteOne({ voteId: Number(request.params.voteId) })
+        if (result.deletedCount === 0) {
+          reply
+            .code(404)
+            .header('content-type', 'text/plain')
+            .send('404 Not Found')
+        }
+        else {
+          reply
+            .code(200)
+            .header('content-type', 'application/json')
+            .send({
+              "status": "200 OK",
+              "voteId": request.params.voteId,
+              "voteTitle": findOfVotes[0].title
+            })
+        }
+      }
+      else {
+        reply
+          .code(403)
+          .header('content-type', 'text/plain')
+          .send('403 Forbidden')
+      }
+    }
+  })
 }
