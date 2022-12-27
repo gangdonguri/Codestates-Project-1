@@ -129,18 +129,17 @@ module.exports = async function (fastify, opts) {
       .send(result)
   })
 
-  // 새로운 선택지 생성
   fastify.post('/options/:voteId', async function (request, reply) {
-    
-    const id = ObjectId()
-    const voteId = request.params.voteId
-    const result = await this.mongo.db.collection('options').insertOne( id, voteId, request.body )
+
+    const result = await this.mongo.db.collection('options').insertOne({
+      "name":request.body.name,
+      "voteId":request.params.voteId
+    })
 
     reply
       .code(200)
       .header('content-type', 'application/json')
       .send(result)
   })
-
 
 }
